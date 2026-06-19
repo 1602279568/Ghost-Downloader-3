@@ -96,11 +96,9 @@ class MobileTaskPage(TaskPage):
         self._cardClassCache[taskType] = mobileClass
         return mobileClass
 
-    def _onCardFinished(self):
-        super()._onCardFinished()  # 基类: 桌面通知(Android 静默)+ 筛选/计划刷新
-        sender = self.sender()
-        if isinstance(sender, TaskCard):
-            notifyDownloadComplete(sender.task.taskId, self.tr("下载完成"), sender.task.title)
+    def _onTaskCompleted(self, task: Task):
+        # 移动端不弹桌面完成弹窗; 走系统通知栏。筛选/计划刷新由基类 _onCardFinished 统一处理。
+        notifyDownloadComplete(task.taskId, self.tr("下载完成"), task.title)
 
     def _mountCard(self, task: Task) -> TaskCard:
         card = self._mobileCardClass(task)(task, self.container)

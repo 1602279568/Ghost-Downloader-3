@@ -1,21 +1,15 @@
 import asyncio
 import sys
-from pathlib import Path
 from typing import Callable, Dict, Any, Coroutine
 
-from PySide6.QtCore import QThread, QTimer, QStandardPaths, QResource, QFileInfo, Qt
-from PySide6.QtWidgets import QApplication, QFileIconProvider
+from PySide6.QtCore import QThread, QTimer
+from PySide6.QtWidgets import QApplication
 from loguru import logger
 
 from app.bases.models import Task, TaskStatus
 from app.services.feature_service import featureService
 from app.supports.android import IS_ANDROID
 from app.supports.config import cfg
-from app.supports.utils import openFile
-
-# desktop-notifier 在 Android 无后端(靠 D-Bus)且无 wheel, 不打包; 完成通知留 v2 走 NotificationManager。
-if not IS_ANDROID:
-    from desktop_notifier import DesktopNotifier, Icon, Button
 
 if sys.platform == 'win32':
     import winloop
@@ -25,12 +19,6 @@ elif sys.platform != 'darwin' and not IS_ANDROID:
     import uvloop
     uvloop.install()
 
-def getNotifierIcon() -> Path:
-    _ = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.TempLocation) + "/gd3_logo.png")
-    if not _.exists():
-        with open(_, "wb") as f:
-            f.write(QResource(":/image/logo.png").data())
-    return _
 
 class CoreService(QThread):
 
@@ -44,37 +32,6 @@ class CoreService(QThread):
         self.runningTasks: dict[str, asyncio.Task] = {}
         self._pendingCallbacks: Dict[str, Callable[[Any, str | None], Coroutine | None]] = {}
         cfg.maxTaskNum.valueChanged.connect(lambda _: self._rebalanceSoon())
-
-    def sendNotification(self, task: Task):
-        if IS_ANDROID:  # v1 无桌面通知后端, 静默
-            return
-        outputFolder = task.outputFolder
-        if not outputFolder:
-            logger.warning("task {} has no outputFolder for notification", task.taskId)
-            return
-
-        directoryPath = str(Path(outputFolder).parent)
-        iconTempPath = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.TempLocation)) / "finished_file_icon.png"
-        QFileIconProvider().icon(QFileInfo(outputFolder)).pixmap(48, 48).scaled(
-            128,
-            128,
-            aspectMode=Qt.AspectRatioMode.KeepAspectRatio,
-            mode=Qt.TransformationMode.SmoothTransformation,
-        ).save(str(iconTempPath), "PNG")
-        buttons = [
-            Button(self.tr('打开文件'), lambda: openFile(outputFolder)),
-            Button(self.tr('打开目录'), lambda: openFile(directoryPath)),
-        ]
-        self.loop.create_task(
-            self.desktopNotifier.send(
-                self.tr("下载完成"),
-                task.title,
-                buttons=buttons,
-                on_clicked=lambda: openFile(outputFolder),
-                icon=Icon(path=iconTempPath),
-            )
-        )
-
 
     def runCoroutine(self, coroutine: Coroutine, callback: Callable[[Any, str | None], Coroutine | None] | None = None):
         if callback is not None:
@@ -276,8 +233,6 @@ class CoreService(QThread):
 
     def run(self):
         """启动线程和事件循环"""
-        if not IS_ANDROID:
-            self.desktopNotifier = DesktopNotifier(app_name="Ghost Downloader", app_icon=Icon(path=getNotifierIcon()))  # OSError: [WinError -2147417842] 应用程序调用一个已为另一线程整理的接口。
         try:
             self.loop.run_until_complete(self.mainLoop)
         except Exception as e:

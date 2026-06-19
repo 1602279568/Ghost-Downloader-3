@@ -22,6 +22,7 @@ from app.supports.signal_bus import signalBus
 from app.supports.utils import toReadableSize, openFile
 from app.view.components.cards import TaskCard
 from app.view.components.dialogs import DeleteTaskDialog, PlanTaskDialog
+from app.view.components.finished_dialog import showDownloadFinishedWindow
 from app.view.components.labels import IconBodyLabel
 
 
@@ -346,7 +347,7 @@ class TaskPage(ScrollArea):
     def _onCardFinished(self):
         sender = self.sender()
         if isinstance(sender, TaskCard):
-            coreService.sendNotification(sender.task)
+            self._onTaskCompleted(sender.task)
 
         if self.filterMode != FilterMode.ALL or self.categoryFilterId is not None:
             self._refreshTaskList()
@@ -389,6 +390,10 @@ class TaskPage(ScrollArea):
 
         except Exception as e:
             logger.opt(exception=e).error("计划任务执行失败")
+
+    def _onTaskCompleted(self, task: Task):
+        """任务完成后的用户提示。桌面端弹独立的置顶窗口; 移动端在子类中静默(走系统通知)。"""
+        showDownloadFinishedWindow(task)
 
     @Slot()
     def _refreshTaskList(self):

@@ -349,7 +349,7 @@ class Config(QConfig):
 
 YEAR = 2026
 AUTHOR = "MoZhi"
-VERSION = "v0.1.1"
+VERSION = "0.1.1"
 DESKTOP_ID = "io.github.MoZhi.GhostDownloader"
 DESKTOP_OBJECT_PATH = "/" + DESKTOP_ID.replace(".", "/")
 LATEST_EXTENSION_VERSION = "1.4.0"

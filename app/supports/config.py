@@ -302,9 +302,6 @@ class Config(QConfig):
     )
 
     # 软件设置
-    checkUpdateAtStartUp = ConfigItem(
-        "Software", "CheckUpdateAtStartUp", True, BoolValidator()
-    )
     autoRun = ConfigItem("Software", "AutoRun", False, BoolValidator())
     enableClipboardListener = ConfigItem(
         "Software", "ClipboardListener", True, BoolValidator()
@@ -351,17 +348,17 @@ class Config(QConfig):
 
 
 YEAR = 2026
-AUTHOR = "XiaoYouChR"
-VERSION = "3.10.4"
-DESKTOP_ID = "io.github.xiaoyouchr.GhostDownloader"
+AUTHOR = "MoZhi"
+VERSION = "v0.1.1"
+DESKTOP_ID = "io.github.MoZhi.GhostDownloader"
 DESKTOP_OBJECT_PATH = "/" + DESKTOP_ID.replace(".", "/")
 LATEST_EXTENSION_VERSION = "1.4.0"
-AUTHOR_URL = "https://space.bilibili.com/437313511"
-FEEDBACK_URL = "https://github.com/XiaoYouChR/Ghost-Downloader-3/issues"
+AUTHOR_URL = "https://space.bilibili.com/700008189"
+FEEDBACK_URL = "https://github.com/1602279568/Ghost-Downloader-3/issues"
 FIREFOX_ADDONS_URL = "https://addons.mozilla.org/zh-CN/firefox/addon/ghost-downloader/"
 EDGE_ADDONS_URL = "https://microsoftedge.microsoft.com/addons/detail/ghost-downloader-browser/odaohmfjjbompdkmfbambadnagplcmce"
 # CHROME_ADDONS_URL = "https://chromewebstore.google.com/detail/ghost-downloader-browser/pinckpkeeajogfgajbicpnengimiblch"
-# RELEASE_URL = "https://github.com/XiaoYouChR/Ghost-Downloader-3/releases/latest"
+# RELEASE_URL = "https://github.com/1602279568/Ghost-Downloader-3/releases/latest"
 # BASE_EFFICIENCY_THRESHOLD = 0.8  # 判断阈值
 
 cfg = Config()

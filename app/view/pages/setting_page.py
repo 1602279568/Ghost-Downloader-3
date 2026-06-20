@@ -8,10 +8,10 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QApplication
 from qfluentwidgets import RangeSettingCard, FluentIcon, SwitchSettingCard, PushSettingCard, \
     HyperlinkButton, ComboBoxSettingCard, HyperlinkCard, PrimaryPushSettingCard, InfoBar, FlyoutView, Flyout, \
-    InfoBarPosition, ToolButton, ToolTipFilter
+    InfoBarPosition, ToolButton, ToolTipFilter, SettingCard
 
 from app.services.browser_service import BrowserService
-from app.supports.config import cfg, EDGE_ADDONS_URL, FIREFOX_ADDONS_URL, AUTHOR_URL, AUTHOR, YEAR, \
+from app.supports.config import cfg, EDGE_ADDONS_URL, FIREFOX_ADDONS_URL, AUTHOR, YEAR, \
     VERSION, FEEDBACK_URL, DESKTOP_ID
 from app.supports.utils import openAppLogFolder
 from app.view.components.category_settings import CategoryRulesCard
@@ -319,14 +319,6 @@ class SettingPage(ScrollArea):
         )
         self.personalGroup.addSettingCard(self.languageCard)
         # Software
-        self.updateOnStartUpCard = SwitchSettingCard(
-            FluentIcon.UPDATE,
-            self.tr("在应用程序启动时检查更新"),
-            self.tr("新版本将更稳定，并具有更多功能"),
-            configItem=cfg.checkUpdateAtStartUp,
-            parent=self.softwareGroup,
-        )
-        self.softwareGroup.addSettingCard(self.updateOnStartUpCard)
         self.autoRunCard = SwitchSettingCard(
             FluentIcon.VPN,
             self.tr("开机启动"),
@@ -344,15 +336,6 @@ class SettingPage(ScrollArea):
         )
         self.softwareGroup.addSettingCard(self.clipboardListenerCard)
         # Application
-        self.authorCard = HyperlinkCard(
-            AUTHOR_URL,
-            self.tr("打开作者的个人空间"),
-            FluentIcon.PROJECTOR,
-            self.tr("了解作者"),
-            self.tr("发现更多 {} 的作品").format(AUTHOR),
-            self.aboutGroup,
-        )
-        self.aboutGroup.addSettingCard(self.authorCard)
         self.feedbackCard = PrimaryPushSettingCard(
             self.tr("提供反馈"),
             FluentIcon.FEEDBACK,
@@ -366,14 +349,22 @@ class SettingPage(ScrollArea):
         self.openLogButton.installEventFilter(ToolTipFilter(self.openLogButton))
         self.feedbackCard.hBoxLayout.insertSpacing(6, 8)
         self.feedbackCard.hBoxLayout.insertWidget(7, self.openLogButton, 0, Qt.AlignmentFlag.AlignRight)
-        self.aboutCard = PrimaryPushSettingCard(
-            self.tr("检查更新"),
+        self.aboutCard = SettingCard(
             FluentIcon.INFO,
             self.tr("关于"),
-            "© " + "Copyright" + f" {YEAR}, {AUTHOR}. " + f"Version {VERSION}",
+            "© " + "Copyright" + f" {YEAR}, {AUTHOR}. Version {VERSION}",
             self.aboutGroup,
         )
         self.aboutGroup.addSettingCard(self.aboutCard)
+        self.forkNoticeCard = HyperlinkCard(
+            "https://github.com/XiaoYouChR/Ghost-Downloader-3",
+            self.tr("Ghost-Downloader-3"),
+            FluentIcon.LINK,
+            self.tr("本软件Fork自 XiaoYouChR 的 Ghost-Downloader-3"),
+            "",
+            self.aboutGroup,
+        )
+        self.aboutGroup.addSettingCard(self.forkNoticeCard)
 
     def initLayout(self):
         self.addSettingGroup(self.generalDownloadGroup)
@@ -392,7 +383,6 @@ class SettingPage(ScrollArea):
         self.installExtensionCard.clicked.connect(self._onInstallExtensionCardClicked)
         self.installExtensionGuidanceCard.clicked.connect(self._onInstallExtensionGuidanceClicked)
         self.autoRunCard.checkedChanged.connect(self._onAutoRunCardChecked)
-        self.aboutCard.clicked.connect(self._onAboutCardClicked)
         self.feedbackCard.clicked.connect(
             lambda: QDesktopServices.openUrl(QUrl(FEEDBACK_URL))
         )
@@ -402,10 +392,6 @@ class SettingPage(ScrollArea):
         InfoBar.success(
             self.tr("已配置"), self.tr("重启软件后生效"), duration=1500, parent=self
         )
-
-    def _onAboutCardClicked(self):
-        mainWindow: "MainWindow" = self.window()
-        mainWindow.checkForUpdates(manual=True)
 
     def _refreshBrowserPairTokenCard(self):
         self.browserPairTokenCard.setContent(BrowserService.instance().pairToken)

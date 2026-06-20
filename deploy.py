@@ -108,8 +108,8 @@ def build_args() -> list[str]:
             '--plugin-enable=pyside6',
             *build_include_args(),
             '--assume-yes-for-downloads',
-            '--msvc=latest',              # Use MSVC
-            # '--mingw64',  # Use MinGW
+            # '--msvc=latest',              # Use MSVC
+            '--mingw64',  # Use MinGW
             # '--show-memory' ,
             # '--show-progress' ,
             '--windows-icon-from-ico=app/assets/logo.ico',

@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import darkdetect
 from PySide6.QtCore import QRect, QPropertyAnimation, Qt, QUrl, QEvent, QTimer
 from PySide6.QtGui import QDesktopServices, QIcon, QColor, QPalette, QKeySequence, QShortcut
-from PySide6.QtWidgets import QApplication, QGraphicsOpacityEffect, QDialog
+from PySide6.QtWidgets import QApplication, QGraphicsOpacityEffect
 from loguru import logger
 from qfluentwidgets import MSFluentWindow, SplashScreen, FluentIcon, NavigationItemPosition, InfoBar, InfoBarPosition, \
     PushButton, PrimaryPushButton, setTheme, isDarkTheme, setThemeColor
@@ -16,16 +16,14 @@ from app.services.browser_service import BrowserService
 from app.services.category_service import categoryService
 from app.services.core_service import coreService
 from app.services.feature_service import featureService
-from app.supports.config import cfg, defaultHeaders, AUTHOR_URL, VERSION, FEEDBACK_URL, isWin10, \
+from app.supports.config import cfg, FEEDBACK_URL, isWin10, \
     isLessThanWin10, toQFluentTheme
 from app.services.task_service import taskService
 from app.supports.signal_bus import signalBus
-from app.supports.update import checkUpdate, UpdateState
 from app.supports.file_open import fileUrisFromArgv
 from app.supports.utils import getProxies, bringWindowToTop, showMessageBox, deduplicateFilename, openAppLogFolder
 from app.view.components.add_task_dialog import AddTaskDialog
 from app.view.components.labels import IconBodyLabel
-from app.view.components.release_info_dialog import ReleaseInfoDialog
 from app.view.components.tray import SystemTrayIcon
 from app.view.pages.setting_page import SettingPage
 from app.view.pages.task_page import TaskPage
@@ -86,9 +84,6 @@ class MainWindow(MSFluentWindow):
         self._updateClipboardListener()
         self._toggleTheme(cfg.customThemeMode.value, triggeredByUser=True)
         self.updateThemeColor()
-
-        if cfg.checkUpdateAtStartUp.value:
-            self.checkForUpdates()
 
     def connectSignalToSlot(self):
         signalBus.showMainWindow.connect(lambda: bringWindowToTop(self))
@@ -387,124 +382,6 @@ class MainWindow(MSFluentWindow):
                     return True, 1
 
         return super().nativeEvent(eventType, message)
-
-    def checkForUpdates(self, manual: bool = False):
-        if manual:
-            InfoBar.info(
-                self.tr("检查更新"),
-                self.tr("正在检查更新..."),
-                duration=1500,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                parent=self,
-            )
-        coreService.runCoroutine(
-            checkUpdate(),
-            lambda state, error: self._onUpdateChecked(state, error, manual),
-        )
-
-    def _onUpdateChecked(self, state: UpdateState, error: str | None, manual: bool):
-        if error:
-            logger.warning("检查更新失败: {}", error)
-            if manual:
-                InfoBar.error(
-                    self.tr("检查更新失败"),
-                    self.tr("无法获取最新版本信息"),
-                    duration=3000,
-                    position=InfoBarPosition.BOTTOM_RIGHT,
-                    parent=self,
-                )
-            return
-
-        if not state.outdated:
-            if manual:
-                InfoBar.success(
-                    self.tr("当前已是最新版本"),
-                    self.tr("当前版本 {0}，最新版本 {1}").format(VERSION, state.latestVersion),
-                    duration=3000,
-                    position=InfoBarPosition.BOTTOM_RIGHT,
-                    parent=self,
-                )
-            return
-
-        if manual:
-            self._showReleaseDialog(state.releaseData)
-            return
-
-        infoBar = InfoBar(
-            icon=FluentIcon.CLOUD,
-            title=self.tr('检测到新版本'),
-            content=self.tr("最新版本: {0}").format(state.latestVersion),
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            duration=-1,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            parent=self,
-        )
-        infoBar.widgetLayout.addSpacing(10)
-        downloadButton = PrimaryPushButton(FluentIcon.DOWNLOAD, self.tr('立即下载'))
-        downloadButton.clicked.connect(lambda: self._downloadBestInstaller(state))
-        infoBar.addWidget(downloadButton)
-        detailButton = PushButton(FluentIcon.CHAT, self.tr('查看版本详细'))
-        detailButton.clicked.connect(lambda: self._showReleaseDialog(state.releaseData))
-        infoBar.addWidget(detailButton)
-        sponsorButton = PushButton(FluentIcon.HEART, self.tr('请作者喝咖啡'))
-        sponsorButton.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(AUTHOR_URL)))
-        infoBar.addWidget(sponsorButton)
-        infoBar.show()
-
-    def _downloadBestInstaller(self, state: UpdateState):
-        installer = state.installer
-        if installer is None:
-            InfoBar.warning(
-                self.tr("未找到适配的安装包"),
-                self.tr("已打开版本详情，请手动选择要下载的文件"),
-                duration=3000,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                parent=self,
-            )
-            self._showReleaseDialog(state.releaseData)
-            return
-        self._downloadInstaller(installer)
-
-    def _downloadInstaller(self, installer: dict[str, Any]):
-        installerName = installer["name"]
-        payload = {
-            "url": installer["browser_download_url"],
-            "headers": defaultHeaders(),
-            "proxies": getProxies(),
-            "path": Path(cfg.downloadFolder.value),
-        }
-        coreService.runCoroutine(
-            coreService._parse(payload),
-            lambda task, error: self._onInstallerParsed(installerName, task, error),
-        )
-
-    def _onInstallerParsed(self, installerName: str, task, error: str | None):
-        if error:
-            logger.warning("创建更新下载任务失败 {}: {}", installerName, error)
-            InfoBar.error(
-                self.tr("创建下载任务失败"),
-                installerName,
-                duration=3000,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                parent=self,
-            )
-            return
-
-        if self.addTask(task):
-            InfoBar.success(
-                self.tr("已添加下载任务"),
-                installerName,
-                duration=2000,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                parent=self,
-            )
-
-    def _showReleaseDialog(self, releaseData: dict):
-        dialog = ReleaseInfoDialog(releaseData, self, False)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self._downloadInstaller(dialog.selectedAsset())
-        dialog.deleteLater()
 
 if isWin10():
     from qframelesswindow import AcrylicWindow, FramelessWindow, WindowEffect

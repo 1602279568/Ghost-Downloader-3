@@ -8,7 +8,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QColor, QIcon, QPainter
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
@@ -24,6 +24,8 @@ from qfluentwidgets import (
     PushButton,
     StrongBodyLabel,
     SubtitleLabel,
+    isDarkTheme,
+    qconfig,
 )
 
 from app.bases.models import Task
@@ -59,6 +61,9 @@ class DownloadFinishedWindow(QWidget):
         )
         # 关闭即销毁, 避免游离窗口泄漏
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        # 独立顶层 QWidget 不会自动套用 Fluent 暗色背景, 这里关闭自动填充,
+        # 改由 paintEvent 按主题绘制背景, 否则暗色模式下底色恒为系统白
+        self.setAutoFillBackground(False)
         self.setMinimumWidth(420)
 
         self._buildUi()
@@ -90,9 +95,12 @@ class DownloadFinishedWindow(QWidget):
         self.fileNameLabel.setWordWrap(True)
 
         # 详情: 路径 / 大小 / 耗时
+        # 次要文字颜色需随主题切换, 否则暗色模式下黑字贴黑底会看不见
+        self._secondaryLabels: list[BodyLabel] = []
+
         self.pathValueLabel = BodyLabel(self._folder, self)
         self.pathValueLabel.setWordWrap(True)
-        self.pathValueLabel.setStyleSheet("color: rgba(0,0,0,150);")
+        self._secondaryLabels.append(self.pathValueLabel)
 
         self.sizeLabel = BodyLabel(self.tr("大小"), self)
         self.sizeValueLabel = BodyLabel(sizeText, self)
@@ -108,7 +116,7 @@ class DownloadFinishedWindow(QWidget):
             (self.sizeLabel, self.sizeValueLabel),
             (self.durationLabel, self.durationValueLabel),
         ):
-            labelText.setStyleSheet("color: rgba(0,0,0,150);")
+            self._secondaryLabels.append(labelText)
             column = QVBoxLayout()
             column.setContentsMargins(0, 0, 0, 0)
             column.setSpacing(2)
@@ -147,10 +155,41 @@ class DownloadFinishedWindow(QWidget):
         rootLayout.addSpacing(8)
         rootLayout.addLayout(buttonLayout)
 
+        # 初次按当前主题刷新次要文字颜色
+        self._applySecondaryTextStyle()
+
+    def _applySecondaryTextStyle(self):
+        """按当前主题给次要文字着色。
+
+        浅色: 接近黑的半透明 (rgba 0,0,0,150) —— 原 IDM 风格;
+        暗色: 改用接近白的半透明 (rgba 255,255,255,160), 否则黑字贴
+        暗色背景几乎不可见。
+        """
+        color = "rgba(255, 255, 255, 160)" if isDarkTheme() else "rgba(0, 0, 0, 150)"
+        style = f"color: {color};"
+        for label in self._secondaryLabels:
+            label.setStyleSheet(style)
+
+    def paintEvent(self, e):
+        """按当前主题绘制窗口背景。
+
+        本窗口是无父窗口的独立 QWidget, 不在 FluentWindow / MessageBoxBase
+        体系内, qfluentwidgets 的全局暗色样式表不会作用到它, 所以必须自己
+        绘制背景: 浅色白底、暗色 rgb(32,32,32) (与项目内 mobile/window 等
+        暗色窗体色值保持一致)。
+        """
+        painter = QPainter(self)
+        painter.setRenderHints(QPainter.RenderHint.Antialiasing)
+        bgColor = QColor(32, 32, 32) if isDarkTheme() else QColor(255, 255, 255)
+        painter.fillRect(self.rect(), bgColor)
+
     def _connectSignals(self):
         self.openFileButton.clicked.connect(self._openFile)
         self.openFolderButton.clicked.connect(self._openFolder)
         self.closeButton.clicked.connect(self.close)
+        # 主题切换时同步刷新背景与次要文字颜色
+        qconfig.themeChanged.connect(self.update)
+        qconfig.themeChanged.connect(self._applySecondaryTextStyle)
 
     def _openFile(self):
         if self._filePath:

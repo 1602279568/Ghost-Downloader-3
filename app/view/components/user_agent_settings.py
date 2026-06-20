@@ -16,6 +16,8 @@ from qfluentwidgets import (
     ToolButton,
     ToolTipFilter,
     TransparentToolButton,
+    isDarkTheme,
+    qconfig,
 )
 
 from app.supports.config import DEFAULT_USER_AGENT_PRESETS, cfg
@@ -125,11 +127,22 @@ class _UserAgentRowWidget(QWidget):
 
     def _initWidget(self) -> None:
         self.iconWidget.setFixedSize(16, 16)
-        self.valueLabel.setStyleSheet("color: gray;")
+        # 次要预览文字需随主题切换, 否则暗色模式下灰色对比度不足
+        self._applySecondaryTextStyle()
+        qconfig.themeChanged.connect(self._applySecondaryTextStyle)
         self.editButton.setToolTip(self.tr("编辑"))
         self.removeButton.setToolTip(self.tr("删除"))
         self.editButton.installEventFilter(ToolTipFilter(self.editButton))
         self.removeButton.installEventFilter(ToolTipFilter(self.removeButton))
+
+    def _applySecondaryTextStyle(self) -> None:
+        """按当前主题给 UA 预览值着色。
+
+        浅色沿用灰色; 暗色改用接近白的半透明, 保证在深色背景上可读。
+        """
+        color = "rgba(255, 255, 255, 160)" if isDarkTheme() else "gray"
+        self.valueLabel.setStyleSheet(f"color: {color};")
+
 
     def _initLayout(self) -> None:
         self.hBoxLayout.setContentsMargins(8, 6, 8, 6)

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QTimer, Qt, QRectF
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
-from PySide6.QtWidgets import QApplication, QMenu, QHBoxLayout, QSystemTrayIcon, QProxyStyle, QStyle, QStyleFactory
+from PySide6.QtWidgets import QApplication, QMenu, QHBoxLayout, QSystemTrayIcon, QProxyStyle, QStyle
 from qfluentwidgets import RoundMenu, FluentStyleSheet, isDarkTheme, Action, FluentIcon, FluentIconBase, Theme, getIconColor
 from qfluentwidgets.common.screen import getCurrentScreenGeometry
 from qfluentwidgets.components.widgets.menu import MenuActionListWidget
@@ -41,7 +41,7 @@ class GhostIcon(FluentIconBase, Enum):
 
 
 class CustomMenuStyle(QProxyStyle):
-    """Custom menu style"""
+    """Custom menu style, 仅覆盖图标大小, 不干涉 palette"""
 
     def __init__(self, iconSize=14):
         """
@@ -58,12 +58,6 @@ class CustomMenuStyle(QProxyStyle):
             return self.iconSize
 
         return super().pixelMetric(metric, option, widget)
-
-    def polish(self, app, /):
-        QStyleFactory.create("fusion").polish(app)
-
-    def unpolish(self, app, /):
-        QStyleFactory.create("fusion").polish(app)
 
 
 class AcrylicMenu(RoundMenu):
@@ -113,7 +107,6 @@ class AcrylicMenu(RoundMenu):
 
         self.hBoxLayout.setContentsMargins(0, 0, 0, 0)
         FluentStyleSheet.MENU.apply(self)
-        self.view.setProperty("transparent", True)
 
         self.view.itemClicked.connect(self._onItemClicked)
         self.view.itemEntered.connect(self._onItemEntered)
